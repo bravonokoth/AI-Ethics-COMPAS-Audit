@@ -1,0 +1,27 @@
+# Virtual environment
+compas_env/
+venv/
+env/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Large datasets
+data/
+*.csv
+*.zip
+
+# System/editor files
+.DS_Store
+*.log
+*.tmp
+.vscode/
+
+# Large model/data files
+*.pkl
+*.h5
