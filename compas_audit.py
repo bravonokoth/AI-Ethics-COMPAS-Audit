@@ -1,12 +1,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for headless systems
 from aif360.datasets import CompasDataset
 from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
 from aif360.algorithms.preprocessing import Reweighing
 import os
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
-
+import shutil
 
 # Ensure data/ directory exists
 os.makedirs("data", exist_ok=True)
@@ -24,21 +24,36 @@ if not os.path.exists(dataset_path):
         print(f"Dataset downloaded to {dataset_path}")
     except Exception as e:
         print(f"Failed to download dataset: {e}")
-        print("Please manually download the dataset from:")
-        print("https://raw.githubusercontent.com/propublica/compas-analysis/master/compas-scores-two-years.csv")
+        print("Please manually download from: https://raw.githubusercontent.com/propublica/compas-analysis/master/compas-scores-two-years.csv")
         print(f"And place it in {dataset_path}")
         exit()
 
-# Load dataset with explicit path
-try:
-    compas_data = CompasDataset(dataset_path)
-    print(f"Dataset loaded successfully from {dataset_path}")
-except Exception as e:
-    print(f"Error loading CompasDataset from {dataset_path}: {e}")
-    print("Ensure the dataset file exists and is correctly formatted.")
+# Verify dataset exists
+if not os.path.exists(dataset_path):
+    print(f"Error: {dataset_path} not found")
     exit()
 
-# Rest of the code (metrics, visualizations, reweighing)
+# Copy dataset to aif360 directory (workaround for CompasDataset)
+aif360_data_path = "compas_env/lib/python3.12/site-packages/aif360/data/raw/compas/compas-scores-two-years.csv"
+os.makedirs(os.path.dirname(aif360_data_path), exist_ok=True)
+try:
+    shutil.copy(dataset_path, aif360_data_path)
+    print(f"Copied dataset to {aif360_data_path}")
+except Exception as e:
+    print(f"Failed to copy dataset to {aif360_data_path}: {e}")
+    print(f"Ensure {dataset_path} is readable and you have write permissions for {os.path.dirname(aif360_data_path)}")
+    exit()
+
+# Load dataset using default CompasDataset
+try:
+    compas_data = CompasDataset()
+    print("Dataset loaded successfully from aif360 default path")
+except Exception as e:
+    print(f"Error loading CompasDataset: {e}")
+    print(f"Ensure compas-scores-two-years.csv is in {os.path.dirname(aif360_data_path)}")
+    exit()
+
+# Rest of the code
 privileged_groups = [{'race': 1}]  # Caucasian
 unprivileged_groups = [{'race': 0}]  # African-American
 
@@ -67,7 +82,7 @@ plt.xlabel('Risk Score')
 plt.ylabel('Count')
 plt.legend()
 plt.savefig('risk_score_distribution.png')
-plt.show()
+plt.close()
 
 fpr_priv = class_metric.false_positive_rate(privileged=True)
 fpr_unpriv = class_metric.false_positive_rate(privileged=False)
@@ -76,7 +91,7 @@ plt.bar(['Caucasian', 'African-American'], [fpr_priv, fpr_unpriv], color=['blue'
 plt.title('False Positive Rates by Race')
 plt.ylabel('False Positive Rate')
 plt.savefig('fpr_by_race.png')
-plt.show()
+plt.close()
 
 reweigh = Reweighing(unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
 compas_reweighed = reweigh.fit_transform(compas_data)
